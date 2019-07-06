@@ -10,10 +10,10 @@ A cmus status notification program made for easy configuration and portability.
 
 #### Installation:
 
-`git clone ...`
+`git clone https://github.com/dcx86r/cmus-notify`  
 `[sudo] sh installer.sh install`
 
-...and to uninstall: 
+...and to uninstall:  
 `[sudo] sh installer.sh uninstall`
 
 #### Configuration:
@@ -26,7 +26,7 @@ Possible config values:
 `file, arist, album, duration, title, tracknumber, date`
 
 Markup tags can be added by prepending config values with b, i, or u -- meaning bold, italicized, underlined.  
-two or all can be used together, e.g. ibu:artist ui:title 
+All can be used together, e.g. ibu:artist ui:title 
 
 #### Activate in cmus:
 
