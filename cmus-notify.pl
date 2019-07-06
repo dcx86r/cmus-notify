@@ -20,8 +20,6 @@ sub markup {
 	foreach (@char) { $str .= "<" . $_ . ">" }
 	foreach (reverse(@char)) { $str .= "</". $_ . ">" }
 	$str =~ s/><\//>$val<\//;
-	open (my $fh, ">>", "/tmp/cmus_err.log");
-	print $fh $str;
 	return $str;
 }
 
