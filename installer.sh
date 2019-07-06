@@ -12,7 +12,7 @@ INSTALL() {
 	chmod 755 $PREFIX/cmus-notify
 	chmod 755 $PREFIX/cmus_notify.sh
 	if [ -f $CFGDIR ]; then
-		echo "bailing -- $CFGDIR not a valid dir" \
+		echo "bailing -- $CFGDIR not a valid dir"
 		exit
 	else
 		cp notify.cfg $CFGDIR/
