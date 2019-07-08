@@ -23,10 +23,12 @@ Copy file to `~/.config/cmus` and modify to override default config.
 
 Possible config values:  
 
-`file artist album duration title tracknumber date`
+`file artist album duration title tracknumber date nomarkup`
 
 Markup tags can be added by prepending config values with b, i, or u -- meaning bold, italicized, underlined.  
 All can be used together, e.g. ibu:artist ui:title 
+
+The default is to assume the notification application parses markup. If it does not, then `nomarkup` should be supplied in the config file.
 
 #### Activate in cmus:
 

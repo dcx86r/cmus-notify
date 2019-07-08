@@ -23,10 +23,14 @@ sub markup {
 	return $str;
 }
 
-sub escape_html {
-	my $str = shift;
-	$str =~ s/&(?!amp;)/&amp;/g;
-	$str =~ s/(<|>)//g;
+sub html {
+	my ($str, $opt) = @_;
+	if ($opt =~ m/escape/) {
+		$str =~ s/&(?!amp;)/&amp;/g;
+		$str =~ s/(<|>)//g;
+		return $str;
+	}
+	else { $str =~ s/&amp;/&/g }
 	return $str;
 }
 
@@ -54,12 +58,23 @@ sub main {
 	);
 	my %fmtd = %playing;
 
+#	read user config file and apply markup if needed
+	my @opts;
+	my $out;
+	read_config(\@opts);
+
+	my $nomarkup;
+#	my $unfmtdout;
+	foreach (@opts) { 
+		$nomarkup = 1 if $_ =~ m/nomarkup/;
+#		$unfmtdout = 1 if $_ =~ m/raw/;
+	}
+
 	for my $key (sort keys %playing) {
 		for my $i (0 .. $#ARGV) {
 			if ($ARGV[$i] =~ m/$key/) {
 				$playing{$key} = $ARGV[++$i];
-#				simple string sanitization
-				$fmtd{$key} = escape_html($playing{$key});
+				$fmtd{$key} = $playing{$key};
 				last;
 			}
 		}
@@ -70,20 +85,19 @@ sub main {
 	$fmtd{duration} = normalize_time($playing{duration})
 		if $playing{duration};
 
-#	read user config file and apply markup if needed
-	my @opts;
-	my $out;
-	read_config(\@opts);
-
 	foreach (@opts) {
-		unless ($fmtd{$_}) {
+		if ($nomarkup) {
+			$_ =~ s/^.*://;
+			$out .= html($fmtd{$_}, "plain") . "\n" if $fmtd{$_};
+		}
+		else {
 			if ($_ =~ m/^[biu]{1,3}:/) {
 				my ($m, $str) = split /:/;
-				$out .= markup($m, $fmtd{$str}) . "\n"
+				$out .= markup($m, html($fmtd{$str}, "escape")) . "\n"
 					if $fmtd{$str};
 			}
+			else { $out .= html($fmtd{$_}, "escape") . "\n" if $fmtd{$_} }
 		}
-		$out .= $fmtd{$_} . "\n" if $fmtd{$_};
 	}
 
 #	print filename if cmus sends no other values,
