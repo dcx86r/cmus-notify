@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+use HTML::Entities qw(encode_entities);
+
 sub read_config {
 	my $opts = shift;
 	my $fh;
@@ -20,17 +22,6 @@ sub markup {
 	foreach (@char) { $str .= "<" . $_ . ">" }
 	foreach (reverse(@char)) { $str .= "</". $_ . ">" }
 	$str =~ s/><\//>$val<\//;
-	return $str;
-}
-
-sub html {
-	my ($str, $opt) = @_;
-	if ($opt =~ m/escape/) {
-		$str =~ s/&(?!amp;)/&amp;/g;
-		$str =~ s/(<|>)//g;
-		return $str;
-	}
-	else { $str =~ s/&amp;/&/g }
 	return $str;
 }
 
@@ -63,12 +54,7 @@ sub main {
 	my $out;
 	read_config(\@opts);
 
-	my $nomarkup;
-#	my $unfmtdout;
-	foreach (@opts) { 
-		$nomarkup = 1 if $_ =~ m/nomarkup/;
-#		$unfmtdout = 1 if $_ =~ m/raw/;
-	}
+	my $nomarkup = 1 if join(" ", @opts) =~ m/nomarkup/;	
 
 	for my $key (sort keys %playing) {
 		for my $i (0 .. $#ARGV) {
@@ -88,15 +74,18 @@ sub main {
 	foreach (@opts) {
 		if ($nomarkup) {
 			$_ =~ s/^.*://;
-			$out .= html($fmtd{$_}, "plain") . "\n" if $fmtd{$_};
+			$out .= $fmtd{$_} . "\n" if $fmtd{$_};
 		}
 		else {
 			if ($_ =~ m/^[biu]{1,3}:/) {
 				my ($m, $str) = split /:/;
-				$out .= markup($m, html($fmtd{$str}, "escape")) . "\n"
-					if $fmtd{$str};
+				$out .= markup($m, encode_entities($fmtd{$str}, '<>&"\047'))
+					. "\n" if $fmtd{$str};
 			}
-			else { $out .= html($fmtd{$_}, "escape") . "\n" if $fmtd{$_} }
+			else { 
+				$out .= encode_entities($fmtd{$_}, '<>&"\047')
+					. "\n" if $fmtd{$_};
+			}
 		}
 	}
 
