@@ -11,6 +11,7 @@ A cmus status notification program made for easy configuration and portability.
 #### Installation:
 
 * `git clone https://github.com/dcx86r/cmus-notify`  
+* install `HTML::Entities` module from CPAN
 * `[sudo] sh installer.sh install`
 
 ...and to uninstall:  
