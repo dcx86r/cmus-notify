@@ -2,7 +2,7 @@
 
 A cmus status notification program made for easy configuration and portability.
 
-![Screenshot](https://raw.githubusercontent.com/dcx86r/dotfiles/master/ntfyscrt.jpg)
+![Screenshot](https://raw.githubusercontent.com/dcx86r/cmus-notify/master/ntfyscrt.jpg)
 
 #### Requirements:
 
@@ -44,6 +44,7 @@ The default is to assume the notification application parses markup. If it does 
 #### Notes
 
 In general: errors are logged to `~/.config/cmus/notify.err`
+
 Album art support:  
 * `cmus-notify` uses `ffmpeg` to extract art from media files
 * art is cached on disk at `~/.config/cmus/covers`
