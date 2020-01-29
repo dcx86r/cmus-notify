@@ -66,7 +66,7 @@ sub get_art {
 			$pos += ($fsize-$pos)/2;
 		}
 		sysseek($fh, sprintf("%d", $pos), 0);
-		sysread($fh, my $snippet, 400);
+		sysread($fh, my $snippet, 5e3);
 		return md5_hex($snippet);
 	};
 		
