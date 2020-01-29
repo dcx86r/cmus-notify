@@ -12,7 +12,7 @@ INSTALL() {
 UNINSTALL() {
 	rm $PREFIX/cmus-notify
 	echo "removed $PREFIX/cmus-notify"
-	echo "uninstalled"
+	echo "uninstalled. config and cache files may remain in ~/.config/cmus"
 }
 
 [ -n "$1" ] || exit
