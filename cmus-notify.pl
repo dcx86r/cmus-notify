@@ -92,10 +92,10 @@ sub get_art {
 } 
 
 sub run_ffmpeg {
-# erroring out immediately if ffmpeg or ffprobe are unavailable
-	my $locs = shift;
-	error("ffmpeg unavailable\n") unless grep -e "$_/ffmpeg", @$locs;
-	error("ffprobe unavailable\n") unless grep -e "$_/ffprobe", @$locs;
+	error("ffmpeg unavailable\n")
+		unless grep -e "$_/ffmpeg", split(/:/, $ENV{PATH});
+	error("ffprobe unavailable\n")
+		unless grep -e "$_/ffprobe", split(/:/, $ENV{PATH});
 	my $file = shift;
 	my $refs = shift;
 	my $cache_dir = shift(@$refs);
@@ -231,10 +231,10 @@ sub main {
 		else { $icon .= "$cache_dir/no_art.png" }
 		push(@args, $icon);
 	}
-	my @locs = split(/:/, $ENV{PATH});
-	error("notify-send unavailable\n") unless grep -e "$_/notify-send", @locs;
+	error("notify-send unavailable\n")
+		unless grep -e "$_/notify-send", split(/:/, $ENV{PATH});
 	system('notify-send', @args);
-	run_ffmpeg(\@locs, $fmtd{file}, $vals) if ref($vals);
+	run_ffmpeg($fmtd{file}, $vals) if ref($vals);
 }
 
 main();
