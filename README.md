@@ -24,7 +24,7 @@ If using a previous version, uninstall old version before installing new one
 
 #### Configuration:
 
-Configuration is accomplished via file, which is installed to `~/.config/cmus/notify.cfg`
+Configuration is accomplished via file, which is installed to `$HOME/.config/cmus/notify.cfg`
 on first run. The file is prepopulated with some default values that can be modified or
 added to.
 
@@ -43,11 +43,11 @@ The default is to assume the notification application parses markup. If it does 
 
 #### Notes
 
-In general: errors are logged to `~/.config/cmus/notify.err`
+In general: errors are logged to `$HOME/.local/share/cmus-notify/error.log`
 
 Album art support:  
 * `cmus-notify` uses `ffmpeg` to extract art from media files
-* art is cached on disk at `~/.config/cmus/covers`
+* art is cached on disk at `$HOME/.local/share/cmus-notify/covers`
 * the cache has no size limits imposed
 * a placeholder image is shown if a file has no embedded art
 * placeholder is also shown if art has not yet been cached (e.g. on first play 

@@ -3,7 +3,7 @@
 use HTML::Entities qw(encode_entities);
 
 sub error {
-	open(my $fh, ">>", "$ENV{HOME}/.config/cmus/notify.err") 
+	open(my $fh, ">>", "$ENV{HOME}/.local/share/cmus-notify/error.log") 
 		|| die "failed to log the fail: $!\n";
 	print $fh (scalar(localtime), " - ", @_);
 	die "cmus-notify error logged\n";
@@ -214,7 +214,7 @@ sub main {
 		require Digest::MD5;
 		Digest::MD5->import(qw(md5_hex));
 # create cache dir unless it exists
-		my $cache_dir = "$ENV{HOME}/.config/cmus/covers";
+		my $cache_dir = "$ENV{HOME}/.local/share/cmus-notify/covers";
 		mkdir $cache_dir, 0755 || error("failed to create $cache_dir: $!\n")
 			unless -e $cache_dir;
 		unless (-e "$cache_dir/no_art.png") {
