@@ -146,6 +146,12 @@ sub run_ffmpeg {
 }
 
 sub main {
+
+# setup data dir
+	my $data_dir = "$ENV{HOME}/.local/share/cmus-notify";
+	mkdir $data_dir, 0755 || die "failed to create $data_dir: $!\n"
+		unless -e $data_dir;
+
 	my %playing = (
 		status => undef,
 		file => undef,
@@ -214,7 +220,7 @@ sub main {
 		require Digest::MD5;
 		Digest::MD5->import(qw(md5_hex));
 # create cache dir unless it exists
-		my $cache_dir = "$ENV{HOME}/.local/share/cmus-notify/covers";
+		my $cache_dir = "$data_dir/covers";
 		mkdir $cache_dir, 0755 || error("failed to create $cache_dir: $!\n")
 			unless -e $cache_dir;
 		unless (-e "$cache_dir/no_art.png") {
