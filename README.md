@@ -28,11 +28,17 @@ Configuration is accomplished via file, which is installed to `$HOME/.config/cmu
 on first run. The file is prepopulated with some default values that can be modified or
 added to.
 
+The default config values:
+
+`i:artist title duration`
+
 All possible config values:
 
 `file artist album duration title tracknumber date nomarkup covers`
 
-Markup tags can be added by prepending config values with b, i, or u -- meaning bold, italicized, underlined.  
+Album art is not shown by default, adding the value `covers` to the config file enables that option.
+
+Markup can be used by prepending config values with b, i, or u -- meaning bold, italicized, underlined.  
 All can be used together, e.g. ibu:artist ui:title. Markup tags do not apply to `nomarkup` or `covers`.
 
 The default is to assume the notification application parses markup. If it does not, then `nomarkup` should be supplied in the config file.
