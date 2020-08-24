@@ -209,7 +209,7 @@ sub main {
 
 # print filename if cmus sends no other values,
 # or if config options malformed
-	$body = $fmtd{file} unless $body;
+	$body = [ split(/\//, $fmtd{file}) ]->[-1] unless $body;
 # prepend status, which is always provided
 	push(my @args, $fmtd{status});
 	push(@args, $body);
