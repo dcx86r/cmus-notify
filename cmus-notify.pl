@@ -47,6 +47,38 @@ sub normalize_time {
 	return $time;
 }
 
+sub manip_art {
+	require Image::Magick;
+	require File::Temp;
+	File::Temp->import(qw(tempfile));
+
+	my $original = shift;
+	my $aref = shift;
+	my ($size, $r) = @{$aref};
+	my $geometry = $size . "x" . $size;
+
+	my $image = Image::Magick->new;
+	$image->Read($original);
+	$image->Resize(geometry=>$geometry);
+	my $mask = $image->Clone;
+	$mask->Set(alpha=>'Extract');
+	$mask->Draw(primitive=>'polygon', fill=>'black', points=>"0,0 0,$r $r,0");
+	$mask->Draw(primitive=>'circle', fill=>'white', points=>"$r,$r $r,0");
+	my $corner_2 = $mask->Clone;
+	$corner_2->Flip;
+	$mask->Composite(image=>$corner_2, compose=>'Multiply');
+	my $mirror = $mask->Clone;
+	$mirror->Flop;
+	$mask->Composite(image=>$mirror, compose=>'Multiply');
+	$mask->Set(alpha=>'Off');
+	$image->Composite(image=>$mask, compose=>'CopyOpacity');
+
+	my $tmpfile = File::Temp->new(SUFFIX => '.png');
+	$image->Write(file=>$tmpfile, filename=>$tmpfile->filename);
+	$tmpfile->flush;
+	return $tmpfile;
+}
+
 sub get_art {
 	my $cache_dir = shift;
 	my $mdref = shift;
@@ -75,7 +107,7 @@ sub get_art {
 # art ID
 	my $aid;
 
-	$fid = $fingerprint->($$mdref{file});
+	$fid = $fingerprint->($mdref->{file});
 
 # check if fingerprint exists in cache
 	push my @data, (grep m/$fid/, @cache);
@@ -84,7 +116,11 @@ sub get_art {
 	if (@data) {
 		($fid, $aid) = split(/:/, pop(@data));
 		return "$cache_dir/no_art.png" if $aid =~ m/no_art/;
-		return "$cache_dir/$aid.png" if -e "$cache_dir/$aid.png";
+		if (-e "$cache_dir/$aid.png") {
+			$mdref->{magick}
+				? return manip_art("$cache_dir/$aid.png", $mdref->{magick})
+				: return "$cache_dir/$aid.png";
+		}
 	}
 # return refs needed for later caching
 	my $aref = [$cache_dir, $fid, $aid, \@cache];
@@ -207,6 +243,12 @@ sub main {
 		}
 	}
 
+	my @magick = split(/:/, [ grep $_ =~ m/covers:/, @opts ]->[0]);
+	if ($magick[0]) {
+		shift @magick;
+		$fmtd{magick} = \@magick;
+	}
+
 # print filename if cmus sends no other values,
 # or if config options malformed
 	$body = [ split(/\//, $fmtd{file}) ]->[-1] unless $body;
@@ -219,6 +261,9 @@ sub main {
 		require Tie::File;
 		require Digest::MD5;
 		Digest::MD5->import(qw(md5_hex));
+		require Scalar::Util;
+		Scalar::Util->import(qw(blessed));
+
 # create cache dir unless it exists
 		my $cache_dir = "$data_dir/covers";
 		mkdir $cache_dir, 0755 || error("failed to create $cache_dir: $!\n")
@@ -233,14 +278,21 @@ sub main {
 		}
 		my $icon = "--icon=";
 		$vals = get_art($cache_dir, \%fmtd);
-		if (!ref($vals)) { $icon .= $vals }
-		else { $icon .= "$cache_dir/no_art.png" }
+
+		unless (blessed($vals)) {
+			$icon .= do {
+				if (ref($vals)) { "$cache_dir/no_art.png" }
+				else { $vals }
+			};
+		}
+		else { $icon .= $vals->filename }
+
 		push(@args, $icon);
 	}
 	error("notify-send unavailable\n")
 		unless grep -e "$_/notify-send", split(/:/, $ENV{PATH});
 	system('notify-send', @args);
-	run_ffmpeg($fmtd{file}, $vals) if ref($vals);
+	run_ffmpeg($fmtd{file}, $vals) if (ref($vals) && !blessed($vals));
 }
 
 main();
@@ -256,7 +308,7 @@ sub config { return q{
 # to use one or more, prepend to requested value with colon separator
 # e.g. b:artist iu:album ib:file
 
-i:artist title duration
+artist i:title duration
 }}
 
 # base64-encoded placeholder image for album art
