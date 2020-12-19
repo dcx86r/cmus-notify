@@ -2,7 +2,7 @@
 
 A cmus status notification program made for easy configuration and portability.
 
-![Screenshot](https://raw.githubusercontent.com/dcx86r/cmus-notify/master/ntfyscrt.jpg)
+![Screenshot](https://raw.githubusercontent.com/dcx86r/cmus-notify/master/2020-12-18-a85d.jpg)
 
 #### Requirements:
 
