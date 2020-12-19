@@ -10,6 +10,7 @@ A cmus status notification program made for easy configuration and portability.
 * perl
 * notify-send
 * ffmpeg (optional)
+* PerlMagick (optional)
 
 #### Installation:
 
@@ -30,7 +31,7 @@ added to.
 
 The default config values:
 
-`i:artist title duration`
+`artist i:title duration`
 
 All possible config values:
 
@@ -46,6 +47,18 @@ The default is to assume the notification application parses markup. If it does 
 #### Activate in cmus:
 
 `:set status_display_program=/usr/local/bin/cmus-notify`
+
+#### Rounding corners
+
+In order to use the functionality to round corners on album art, PerlMagick must be installed first.  
+
+With PerlMagick installed, the `covers` option in the config file must be appended with two values:
+
+1. image size
+2. corner radius
+
+The image size setting should match the expected size shown in the notification application (e.g. 64, 128).  
+For example, `covers:128:8` sets the image size to 128px and the corner radius to 8.
 
 #### Notes
 
