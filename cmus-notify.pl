@@ -5,7 +5,7 @@ use HTML::Entities qw(encode_entities);
 sub error {
 	open(my $fh, ">>", "$ENV{HOME}/.local/share/cmus-notify/error.log") 
 		|| die "failed to log the fail: $!\n";
-	print $fh (scalar(localtime), " - ", @_);
+	print $fh (scalar(localtime), " - ", @_, "\n");
 	die "cmus-notify error logged\n";
 }
 
@@ -59,6 +59,8 @@ sub manip_art {
 
 	my $image = Image::Magick->new;
 	$image->Read($original);
+# return without modification if the image has an alpha channel
+	return $original if $image->Get('matte');
 	$image->Resize(geometry=>$geometry);
 	my $mask = $image->Clone;
 	$mask->Set(alpha=>'Extract');
@@ -80,8 +82,7 @@ sub manip_art {
 }
 
 sub get_art {
-	my $cache_dir = shift;
-	my $mdref = shift;
+	my ($cache_dir, $ph, $mdref) = @_;
 	tie my @cache, 'Tie::File', "$cache_dir/store.txt", memory => 40
 		|| error("can't access $cache_dir/store.txt: $!\n");
 
@@ -110,28 +111,62 @@ sub get_art {
 	$fid = $fingerprint->($mdref->{file});
 
 # check if fingerprint exists in cache
-	push my @data, (grep m/$fid/, @cache);
+	push my @data, (grep { $_ =~ m/$fid/ } @cache);
 	
 # return art or placeholder if cache entry exists
 	if (@data) {
 		($fid, $aid) = split(/:/, pop(@data));
-		return "$cache_dir/no_art.png" if $aid =~ m/no_art/;
-		if (-e "$cache_dir/$aid.png") {
-			$mdref->{magick}
-				? return manip_art("$cache_dir/$aid.png", $mdref->{magick})
-				: return "$cache_dir/$aid.png";
+
+		my $filename;
+
+		if ($aid =~ m/no_art/) {
+			error("$cache_dir/$ph expected and not found")
+				unless -e "$cache_dir/$ph";
+			$filename = $ph;
 		}
+		else {
+			error("$cache_dir/$aid.png expected and not found")
+				unless -e "$cache_dir/$aid.png";
+			$filename = "$aid.png";
+		}
+
+		$mdref->{magick}
+			? return manip_art("$cache_dir/$filename", $mdref->{magick})
+			: return "$cache_dir/$filename";
 	}
 # return refs needed for later caching
 	my $aref = [$cache_dir, $fid, $aid, \@cache];
 	return $aref;
 } 
 
+sub init_ph {
+	my ($cache_dir, $optref) = @_;
+	unless (${$optref}->[0]) {
+# create placeholder
+		unless (-e "$cache_dir/no_art.png") {
+			require MIME::Base64;
+			MIME::Base64->import(qw(decode_base64));
+			my $png = decode_base64(b64ph());
+			open(my $fh, ">", "$cache_dir/no_art.png")
+				|| error("can't open in $cache_dir: $!\n");
+			binmode($fh, ":raw");
+			print $fh $png;
+		}
+# or return the filename
+		return "no_art.png";
+	}
+# or return a filename the user defined
+	else {
+		my $ph = substr(${$optref}->[0], (index(${$optref}->[0], ':') + 1));
+		$ph ? return $ph : error("Invalid placeholder value found in config");
+	}
+}
+
 sub run_ffmpeg {
 	error("ffmpeg unavailable\n")
-		unless grep -e "$_/ffmpeg", split(/:/, $ENV{PATH});
+		unless grep { -e "$_/ffmpeg" } split(/:/, $ENV{PATH});
 	error("ffprobe unavailable\n")
-		unless grep -e "$_/ffprobe", split(/:/, $ENV{PATH});
+		unless grep { -e "$_/ffprobe" } split(/:/, $ENV{PATH});
 	my $file = shift;
 	my $refs = shift;
 	my $cache_dir = shift(@$refs);
@@ -175,7 +210,7 @@ sub run_ffmpeg {
 				|| error("can't remove $aid.png: $!\n");
 			push @cache, "$fid:no_art";
 		} else {
-			push my @data, (grep m/$fid/, @cache);
+			push my @data, (grep { $_ =~ m/$fid/ } @cache);
 			push @cache, "$fid:$aid" unless @data;
 		}
 	} else { push @cache, "$fid:no_art" }
@@ -188,16 +223,7 @@ sub main {
 	mkdir $data_dir, 0755 || die "failed to create $data_dir: $!\n"
 		unless -e $data_dir;
 
-	my %playing = (
-		status => undef,
-		file => undef,
-		artist => undef,
-		album => undef,
-		title => undef,
-		duration => undef,
-		tracknumber => undef,
-		date => undef,
-	);
+	my %playing = @ARGV;
 	my %fmtd = %playing;
 
 # read user config file and apply markup if needed
@@ -205,18 +231,8 @@ sub main {
 	my $body;
 	read_config(\@opts);
 
-	my $nomarkup = 1 if join(" ", @opts) =~ m/nomarkup/;
-	my $art = 1 if join(" ", @opts) =~ m/covers/;
-
-	for my $key (sort keys %playing) {
-		for my $i (0 .. $#ARGV) {
-			if ($ARGV[$i] =~ m/$key/) {
-				$playing{$key} = $ARGV[++$i];
-				$fmtd{$key} = $playing{$key};
-				last;
-			}
-		}
-	}
+	my $nomarkup = 1 if grep { $_ =~ m/nomarkup/ } @opts;
+	my $art = 1 if grep { $_ =~ m/covers/ } @opts;
 
 	exit unless -e "$fmtd{file}";
 
@@ -243,7 +259,7 @@ sub main {
 		}
 	}
 
-	my @magick = split(/:/, [ grep $_ =~ m/covers:/, @opts ]->[0]);
+	my @magick = split(/:/, [ grep { $_ =~ m/covers:/ } @opts ]->[0]);
 	if ($magick[0]) {
 		shift @magick;
 		$fmtd{magick} = \@magick;
@@ -263,34 +279,31 @@ sub main {
 		Digest::MD5->import(qw(md5_hex));
 		require Scalar::Util;
 		Scalar::Util->import(qw(blessed));
-
 # create cache dir unless it exists
 		my $cache_dir = "$data_dir/covers";
 		mkdir $cache_dir, 0755 || error("failed to create $cache_dir: $!\n")
 			unless -e $cache_dir;
-		unless (-e "$cache_dir/no_art.png") {
-			require MIME::Base64;
-			MIME::Base64->import(qw(decode_base64));
-			my $ph = decode_base64(b64ph());
-			open(my $fh, ">", "$cache_dir/no_art.png")
-				|| error("can't open in $cache_dir: $!\n");
-			print $fh $ph;
-		}
-		my $icon = "--icon=";
-		$vals = get_art($cache_dir, \%fmtd);
+
+# init placeholder art or confirm user defined
+		my $ph = init_ph($cache_dir, \[ grep { $_ =~ m/placeholder/ } @opts ]);
+
+		$vals = get_art($cache_dir, $ph, \%fmtd);
+
+		my $icon;
 
 		unless (blessed($vals)) {
-			$icon .= do {
-				if (ref($vals)) { "$cache_dir/no_art.png" }
+			$icon = do {
+				if (ref($vals)) { "$cache_dir/$ph" }
 				else { $vals }
 			};
 		}
-		else { $icon .= $vals->filename }
+		else { $icon = $vals->filename }
 
-		push(@args, $icon);
+		push(@args, "--icon=" . $icon) if -e $icon;
 	}
 	error("notify-send unavailable\n")
-		unless grep -e "$_/notify-send", split(/:/, $ENV{PATH});
+		unless grep { -e "$_/notify-send" } split(/:/, $ENV{PATH});
+
 	system('notify-send', @args);
 	run_ffmpeg($fmtd{file}, $vals) if (ref($vals) && !blessed($vals));
 }
@@ -302,7 +315,7 @@ sub config { return q{
 # file, artist, album, duration, title, tracknumber, date
 # 
 # other possible values:
-# nomarkup, covers
+# nomarkup, covers, placeholder
 #
 # markup options: b, i, u -- meaning bold, italicized, underlined.
 # to use one or more, prepend to requested value with colon separator
