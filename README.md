@@ -35,7 +35,8 @@ The default config values:
 
 All possible config values:
 
-`file artist album duration title tracknumber date nomarkup covers placeholder`
+`file artist album duration title tracknumber date nomarkup covers placeholder 
+dunst`
 
 Album art is not shown by default, adding the value `covers` to the config file 
 enables that option.  
@@ -50,6 +51,11 @@ Markup tags do not apply to `nomarkup` or `covers`.
 
 The default is to assume the notification application parses markup. If it does 
 not, then `nomarkup` should be supplied in the config file.
+
+**When using dunst**, the config option `dunst` can be used to only display
+the most current notification instead of stacking new notifications under old
+ones. This option does not need to be set if this behaviour is not desired but
+dunst is still being used.
 
 ##### Activate in cmus:
 

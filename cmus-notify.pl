@@ -233,6 +233,7 @@ sub main {
 
 	my $nomarkup = 1 if grep { $_ =~ m/nomarkup/ } @opts;
 	my $art = 1 if grep { $_ =~ m/covers/ } @opts;
+	my $dunst = 1 if grep { $_ =~ m/dunst/ } @opts;
 
 	exit unless -e "$fmtd{file}";
 
@@ -298,13 +299,21 @@ sub main {
 			};
 		}
 		else { $icon = $vals->filename }
-
-		push(@args, "--icon=" . $icon) if -e $icon;
+		unshift(@args, "-h", "string:image-path:" . $icon) if -e $icon;
 	}
-	error("notify-send unavailable\n")
-		unless grep { -e "$_/notify-send" } split(/:/, $ENV{PATH});
 
-	system('notify-send', @args);
+	unless ($dunst) {
+		error("notify-send unavailable\n")
+			unless grep { -e "$_/notify-send" } split(/:/, $ENV{PATH});
+		system('notify-send', @args);
+	}
+	else {
+		error("dunstify unavailable\n")
+			unless grep { -e "$_/dunstify" } split(/:/, $ENV{PATH});
+		unshift(@args, "-h", "string:x-dunst-stack-tag:cmus");
+		system('dunstify', @args);
+	}
+
 	run_ffmpeg($fmtd{file}, $vals) if (ref($vals) && !blessed($vals));
 }
 
@@ -315,7 +324,7 @@ sub config { return q{
 # file, artist, album, duration, title, tracknumber, date
 # 
 # other possible values:
-# nomarkup, covers, placeholder
+# nomarkup, covers, placeholder, dunst
 #
 # markup options: b, i, u -- meaning bold, italicized, underlined.
 # to use one or more, prepend to requested value with colon separator
