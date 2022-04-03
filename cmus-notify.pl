@@ -82,7 +82,7 @@ sub manip_art {
 }
 
 sub get_art {
-	my ($cache_dir, $ph, $mdref) = @_;
+	my ($cache_dir, $ph, $file, $magick) = @_;
 	tie my @cache, 'Tie::File', "$cache_dir/store.txt", memory => 40
 		|| error("can't access $cache_dir/store.txt: $!\n");
 
@@ -102,13 +102,13 @@ sub get_art {
 		sysread($fh, my $snippet, 5e3);
 		return md5_hex($snippet);
 	};
-		
+
 # file ID
 	my $fid;
 # art ID
 	my $aid;
 
-	$fid = $fingerprint->($mdref->{file});
+	$fid = $fingerprint->($file);
 
 # check if fingerprint exists in cache
 	push my @data, (grep { $_ =~ m/$fid/ } @cache);
@@ -120,8 +120,6 @@ sub get_art {
 		my $filename;
 
 		if ($aid =~ m/no_art/) {
-			error("$cache_dir/$ph expected and not found")
-				unless -e "$cache_dir/$ph";
 			$filename = $ph;
 		}
 		else {
@@ -130,8 +128,8 @@ sub get_art {
 			$filename = "$aid.png";
 		}
 
-		$mdref->{magick}
-			? return manip_art("$cache_dir/$filename", $mdref->{magick})
+		$magick
+			? return manip_art("$cache_dir/$filename", $magick)
 			: return "$cache_dir/$filename";
 	}
 # return refs needed for later caching
@@ -158,7 +156,9 @@ sub init_ph {
 # or return a filename the user defined
 	else {
 		my $ph = substr(${$optref}->[0], (index(${$optref}->[0], ':') + 1));
-		$ph ? return $ph : error("Invalid placeholder value found in config");
+		error("Invalid placeholder value found in config") unless $ph;
+		error("Placeholder image not found") unless (-e "$cache_dir/$ph");
+		(-r "$cache_dir/$ph") ? return $ph : error("Can't read $cache_dir/$ph");
 	}
 }
 
@@ -220,18 +220,53 @@ sub run_ffmpeg {
 
 sub main {
 
+	require Tie::File;
+	require Digest::MD5;
+	Digest::MD5->import(qw(md5_hex));
+	require Scalar::Util;
+	Scalar::Util->import(qw(blessed));
+
 # setup data dir
 	my $data_dir = "$ENV{HOME}/.local/share/cmus-notify";
 	mkdir $data_dir, 0755 || die "failed to create $data_dir: $!\n"
 		unless -e $data_dir;
 
-	my %playing = @ARGV;
-	my %fmtd = %playing;
+	my $vals;
 
 # read user config file and apply markup if needed
 	my @opts;
 	my $body;
 	read_config(\@opts);
+
+# precache mode - runs through cmus playlist caching all file art in sequence
+	unless ($ARGV[1]) {
+		my $playlist = $ARGV[0];
+
+		my $cache_dir = "$data_dir/covers";
+		mkdir $cache_dir, 0755 || error("failed to create $cache_dir: $!\n")
+			unless -e $cache_dir;
+
+		open(my $fh, "<", $playlist)
+			|| die "can't open playlist file: $!\n";
+		$| = 1;
+		print "Precaching starting...\n";
+		my @list;
+		while (<$fh>) {
+			chomp;
+			push @list, $_;
+		}
+		close($fh);
+
+		foreach my $file (@list) {
+			$vals = get_art($cache_dir, "no_art.png", $file);
+			run_ffmpeg($file, $vals) if (ref($vals) && !blessed($vals));
+		}
+		print "Precaching finished\n";
+		exit;
+	}
+
+	my %playing = @ARGV;
+	my %fmtd = %playing;
 
 	my $nomarkup = 1 if grep { $_ =~ m/nomarkup/ } @opts;
 	my $art = 1 if grep { $_ =~ m/covers/ } @opts;
@@ -275,13 +310,9 @@ sub main {
 	push(my @args, $fmtd{status});
 	push(@args, $body);
 	chomp($args[-1]);
-	my $vals;
+
 	if ($art) {
-		require Tie::File;
-		require Digest::MD5;
-		Digest::MD5->import(qw(md5_hex));
-		require Scalar::Util;
-		Scalar::Util->import(qw(blessed));
+
 # create cache dir unless it exists
 		my $cache_dir = "$data_dir/covers";
 		mkdir $cache_dir, 0755 || error("failed to create $cache_dir: $!\n")
@@ -290,7 +321,7 @@ sub main {
 # init placeholder art or confirm user defined
 		my $ph = init_ph($cache_dir, \[ grep { $_ =~ m/placeholder/ } @opts ]);
 
-		$vals = get_art($cache_dir, $ph, \%fmtd);
+		$vals = get_art($cache_dir, $ph, $fmtd{file}, $fmtd{magick});
 
 		my $icon;
 
