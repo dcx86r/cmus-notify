@@ -191,29 +191,31 @@ sub run_ffmpeg {
 	binmode($out, ":raw");
 	while (<$out>) { $raw .= $_ }
 	undef $out, $err;
-	$aid = md5_hex($raw) if $raw;
-	if ($aid) {
-		unless (-e "$cache_dir/$aid.png") {
-			open(my $fh, ">", "$cache_dir/$aid.png")
-				|| error("can't write PNG: $!\n");
-			binmode($fh, ":raw");
-			print $fh $raw;
-		}
+	unless ($raw) {
+		push @cache, "${fid}:no_art";
+		return;
+	}
+	$aid = md5_hex($raw);
+	unless (-e "$cache_dir/$aid.png") {
+		open(my $fh, ">", "$cache_dir/$aid.png")
+			|| error("can't write PNG: $!\n");
+		binmode($fh, ":raw");
+		print $fh $raw;
+	}
 # testing art for invalid formats to reject
-		open3(undef, my $out, my $err,
-			'ffprobe', '-v', '16', "$cache_dir/$aid.png"
-		);
-		my $pngerr;
-		while (<$out>) { $pngerr .= $_ }
-		if ($pngerr) {
-			unlink "$cache_dir/$aid.png" 
-				|| error("can't remove $aid.png: $!\n");
-			push @cache, "$fid:no_art";
-		} else {
-			push my @data, (grep { $_ =~ m/$fid/ } @cache);
-			push @cache, "$fid:$aid" unless @data;
-		}
-	} else { push @cache, "$fid:no_art" }
+	open3(undef, my $out, my $err,
+		'ffprobe', '-v', '16', "$cache_dir/$aid.png"
+	);
+	my $pngerr;
+	while (<$out>) { $pngerr .= $_ }
+	if ($pngerr) {
+		unlink "$cache_dir/$aid.png"
+			|| error("can't remove $aid.png: $!\n");
+		push @cache, "$fid:no_art";
+	} else {
+		push my @data, (grep { $_ =~ m/$fid/ } @cache);
+		push @cache, "$fid:$aid" unless @data;
+	}
 }
 
 sub main {
@@ -268,7 +270,7 @@ sub main {
 
 # print filename if cmus sends no other values,
 # or if config options malformed
-	$body = [ split(/\//, $fmtd{file}) ]->[-1] unless $body;
+	$body //= [ split(/\//, $fmtd{file}) ]->[-1];
 # prepend status, which is always provided
 	push(my @args, $fmtd{status});
 	push(@args, $body);
