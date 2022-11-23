@@ -16,10 +16,10 @@ A cmus status notification program made for easy configuration and portability.
 
 * `git clone https://github.com/dcx86r/cmus-notify`  
 * install `HTML::Entities` module from CPAN
-* `[sudo] sh installer.sh install`
+* `[sudo] make install`
 
 ...and to uninstall:  
-* `[sudo] sh installer.sh uninstall`
+* `[sudo] make uninstall`
 
 If using a previous version, uninstall old version before installing new one
 
